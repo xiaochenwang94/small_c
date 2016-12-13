@@ -1,0 +1,13 @@
+read a;
+read b;
+
+if a<b then c:=a; a:=b; b:=c; end;
+if b==0 then write b; 
+else 
+    repeat 
+        c:=a%b;
+        a:=b;
+        b:=c;
+    until b==0;
+    write a;
+end

@@ -1,0 +1,5 @@
+read x;
+write x*x+1;
+read y;
+if y<5 then repeat y:=y+2 until y>5 ;write y end;
+write y*((x-y)>0)-x

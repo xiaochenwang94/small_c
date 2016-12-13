@@ -1,0 +1,15 @@
+read y;
+if y<5 then
+ if y>3 then write y;
+ else write 0-y; end;
+end; 
+
+i:=1;
+repeat 
+    i:=i+1;
+    write i;
+    j:=1;
+    repeat j:=j+1;
+           write j; 
+    until j==5 
+ until i==5

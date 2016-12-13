@@ -1,0 +1,3 @@
+read x;
+read y;
+if x>y then write x-y else write y-x end

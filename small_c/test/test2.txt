@@ -1,0 +1,9 @@
+read n;
+i:=1;
+if i<n then
+repeat
+    read x;
+    write odd x;
+    ++i;
+until i > n;
+end

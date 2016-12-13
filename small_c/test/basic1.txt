@@ -1,0 +1,7 @@
+read x;
+read y;
+write x;
+write y;
+if x>y then t:=x;x:=y;y:=t end;
+write x;
+write y

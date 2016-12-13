@@ -1,0 +1,13 @@
+i:=2;
+repeat
+    isPrime:=1;
+    j:=2;
+    repeat
+        if j<i then 
+            if i%j == 0 then isPrime:=0; end;
+            j++;
+        end;
+    until j>=i;
+    if isPrime == 1 then write i; end;
+    i++;
+until i>100

@@ -37,6 +37,7 @@ enum symbol {
 };
 #define symnum 39
 
+// ident类型
 enum object {
     constant,
     variable,
@@ -97,47 +98,54 @@ bool declbegsys[symnum];    /* 表示声明开始的符号集合 */
 bool statbegsys[symnum];    /* 表示语句开始的符号集合 */
 bool facbegsys[symnum];     /* 表示因子开始的符号集合 */
 int dx = 0;                 // dx代表要预留的空间
-bool isEnd = false;
-bool isPost = false;
-enum symbol oldsym;
+bool isEnd = false;         // 是不是程序结束
+bool isPost = false;        // 判断++ -- 在变量前后
+enum symbol oldsym;         // 记录上一个符号
 
 struct tablestruct table[txmax]; /* 符号表 */
 
 
-void init();
-void getsym();
-void getch();
-void error(int n);
-int addset(bool* sr, bool* s1, bool* s2, int n);
-void listall();
-void interpret();
-void gen(enum fct x, int y, int z);
-void program(int tx, bool* fsys);
-void statment(int *tx, bool* fsys);
-void stmt_sequence(int *tx, bool* fsys);
-void if_stmt(int *tx, bool* fsys);
-void repeat_stmt(int *tx, bool* fsys);
-void assign_stmt(int *tx, bool* fsys, int pos);
-void read_stmt(int *tx, bool* fsys);
-void write_stmt(int *tx, bool* fsys);
+void init();                // 初始化函数
+void getsym();              // 获取下一个sym
+void getch();               // 获取下一个字符
+void error(int n);          // error 函数
+int addset(bool* sr, bool* s1, bool* s2, int n);        // 求并集
+void listall();             // 显示所有代码
+void interpret();           // 解释程序
+void gen(enum fct x, int y, int z);     // 生成中间代码命令
+void program(int tx, bool* fsys);       // 程序主体
+void statment(int *tx, bool* fsys);     // statement部分
+void stmt_sequence(int *tx, bool* fsys);    //stmt_sequence 部分
+void if_stmt(int *tx, bool* fsys);      // if语句
+void repeat_stmt(int *tx, bool* fsys);  // repeat语句
+void assign_stmt(int *tx, bool* fsys, int pos);     // 赋值语句
+void read_stmt(int *tx, bool* fsys);    // 读入语句
+void write_stmt(int *tx, bool* fsys);   // 输出语句
 void exp(int *tx, bool* fsys);
-int position(char* idt, int tx);
-void simple_exp(int *tx, bool *fsys);
-void term(int *tx, bool *fsys);
+int position(char* idt, int tx);        // 查看table中变量函数
+void simple_exp(int *tx, bool *fsys);   // 简单表达式
+void term(int *tx, bool *fsys);         // term项
 void factor(int *tx, bool *fsys);
 void test(bool* s1, bool* s2, int n);
 int inset(int e, bool* s);
 int base(int l, int* s, int b);
 void enter(enum object k, int *ptx, int *pdx);
-void incr(int pre, int post);
-void decr(int pre, int post);
+void incr(int pre, int post);           // 自增
+void decr(int pre, int post);           // 自减
 
 
 
 int main(int argc, const char * argv[]) {
     bool nxtlev[symnum];                    //跟随符号集合
-    cout<<"Input small_c file?\t";
-    scanf("%s", fname);		/* 输入文件名 */
+    
+//    cout << argc<<endl;
+    if(argc == 2){
+        strcpy(fname, argv[1]);
+    }
+    else{
+        cout<<"Input small_c file?\t";
+        scanf("%s", fname);		/* 输入文件名 */
+    }
     
     if ((fin = fopen(fname, "r")) == NULL)
     {
@@ -165,7 +173,7 @@ int main(int argc, const char * argv[]) {
         printf("Can't open ftable.txt file!\n");
         exit(1);
     }
-    
+
     printf("List object codes?(Y/N)");	/* 是否输出虚拟机代码 */
     scanf("%s", fname);
     listswitch = (fname[0]=='y' || fname[0]=='Y');
@@ -180,9 +188,12 @@ int main(int argc, const char * argv[]) {
     ch = ' ';
     
     addset(nxtlev, declbegsys, statbegsys, symnum);
+    addset(nxtlev, nxtlev, facbegsys, symnum);
     nxtlev[nul] = true;
     getsym();
     program(0, nxtlev); //处理分程序
+    
+    
 
     if (err == 0){
         printf("\n===Parsing success!===\n");
@@ -236,9 +247,40 @@ void program(int tx, bool* fsys){
     table[tx].adr = cx; //记录代码开始位置
     cx0 = cx;
     gen(ini, 0, 0);     //程序开始预留的空间数量不能确定，因此先写为0，后面根据全局变量dx，预留相应空间。
+    test(fsys, fsys, 1);                  //error 1: program begin error
     stmt_sequence(&tx, fsys);
     code[cx0].a = dx;
     gen(opr, 0, 0);
+    
+    if (tableswitch)		/* 输出符号表 */
+    {
+        for (int i = 1; i <= tx; i++)
+        {
+            switch (table[i].kind)
+            {
+                case constant:
+                    printf("    %d const %s ", i, table[i].name);
+                    printf("val=%d\n", table[i].val);
+                    fprintf(ftable, "    %d const %s ", i, table[i].name);
+                    fprintf(ftable, "val=%d\n", table[i].val);
+                    break;
+                case variable:
+                    printf("    %d var   %s ", i, table[i].name);
+                    printf("lev=%d addr=%d\n", table[i].level, table[i].adr);
+                    fprintf(ftable, "    %d var   %s ", i, table[i].name);
+                    fprintf(ftable, "lev=%d addr=%d\n", table[i].level, table[i].adr);
+                    break;
+                case procedure:
+                    printf("    %d proc  %s ", i, table[i].name);
+                    printf("lev=%d addr=%d size=%d\n", table[i].level, table[i].adr, table[i].size);
+                    fprintf(ftable,"    %d proc  %s ", i, table[i].name);
+                    fprintf(ftable,"lev=%d addr=%d size=%d\n", table[i].level, table[i].adr, table[i].size);
+                    break;
+            }
+        }
+        printf("\n");
+        fprintf(ftable,"\n");
+    }
 }
 
 void stmt_sequence(int *tx, bool* fsys) {
@@ -246,6 +288,7 @@ void stmt_sequence(int *tx, bool* fsys) {
     memcpy(nxtlev, fsys, symnum*sizeof(bool));
     nxtlev[semicolon] = true;
     while(1){
+        //test(nxtlev, fsys, 2);
         statment(tx, nxtlev);
         if(sym == semicolon){
             getsym();
@@ -257,6 +300,7 @@ void stmt_sequence(int *tx, bool* fsys) {
 
 void statment(int *tx, bool* fsys) {
     int i = 0;
+    int postpos,prepos;
     bool nxtlev[symnum];
     memset(nxtlev, 0, sizeof(bool)*symnum);
     switch (sym) {
@@ -282,6 +326,26 @@ void statment(int *tx, bool* fsys) {
             getsym();
             write_stmt(tx, fsys);
             break;
+        case incsym:
+            if(oldsym == ident) isPost = true;
+            postpos = position(id, *tx);
+            getsym();
+            if(!isPost && sym != ident) {error(102);break;}
+            prepos = position(id, *tx);
+            incr(prepos, postpos);
+            isPost =false;
+            getsym();
+            break;
+        case decsym:
+            if(oldsym == ident) isPost = true;
+            postpos = position(id, *tx);
+            getsym();
+            if(!isPost && sym != ident) {error(102);break;}
+            prepos = position(id, *tx);
+            incr(prepos, postpos);
+            isPost=false;
+            getsym();
+            break;
         default:
             break;
     }
@@ -293,7 +357,7 @@ void repeat_stmt(int *tx, bool* fsys){
     bool nxtlev[symnum];
 //    memcpy(nxtlev, fsys, sizeof(bool)*symnum);
     nxtlev[untilsym] = true;
-    test(nxtlev, fsys, 7);
+    test(nxtlev, fsys, 8);                  //error 8: untilsym error
     if(sym == untilsym){
         getsym();
         exp(tx, fsys);
@@ -307,12 +371,16 @@ void assign_stmt(int *tx, bool* fsys, int pos){
     bool nxtlev[symnum];
     memcpy(nxtlev, fsys, symnum*sizeof(bool));
     nxtlev[becomes] = true;
-    test(nxtlev, fsys, 10);
+    nxtlev[incsym] = true;
+    nxtlev[decsym] = true;
+    test(nxtlev, fsys, 9);                  //error 9: assign error
     if(sym == becomes){
         getsym();
         exp(tx, fsys);
-        if(table[pos].kind != variable) error(33);                     // error 33: only variable can be assigned
+        if(table[pos].kind != variable) error(10);                     // error 10: only variable can be assigned
         gen(sto,0,table[pos].adr);
+    } else if (sym == incsym|| sym == decsym){
+        factor(tx, fsys);
     }
 }
 
@@ -321,7 +389,7 @@ void read_stmt(int *tx, bool* fsys){
     bool nxtlev[symnum];
     memset(nxtlev, 0, symnum*sizeof(bool));
     nxtlev[ident] = true;
-    test(nxtlev, fsys, 32);         //error sym follows read must be ident
+    test(nxtlev, fsys, 11);         //error 11: sym follows read must be ident
     if(sym == ident){
         i = position(id,*tx);
     } else {
@@ -341,37 +409,49 @@ void write_stmt(int *tx, bool* fsys){
     bool nxtlev[symnum];
     memset(nxtlev, 0, symnum*sizeof(bool));
     nxtlev[ident] = true;
+    nxtlev[number] = true;
+    nxtlev[oddsym] = true;
+    test(nxtlev, fsys, 12);         //error 12: sym follows write must be ident or number
     exp(tx, fsys);
     gen(opr, 0, 14);
     gen(opr, 0, 15);
+    memset(nxtlev, 0, symnum*sizeof(bool));
+    nxtlev[semicolon] = true;
+//    if(!isEnd)
+//        test(nxtlev, fsys, 14);         //error 14: sym follows write_stmt must be semicolon
 }
 
 void if_stmt(int *tx, bool* fsys){
     bool nxtlev[symnum];
-    nxtlev[thensym] = true;
+    test(facbegsys, fsys, 3);              // error 3: if_stmt begin error
     exp(tx,fsys);
     int cx0 = cx;
     int elsecx = -1;
     gen(jpc, 0, 0);
-    test(nxtlev, fsys, 4);
+    nxtlev[thensym] = true;
+    test(nxtlev, fsys, 4);                  // error 4: if lost then
     if(sym == thensym){
         getsym();
+        bool tmp[symnum];
+        addset(tmp, statbegsys, facbegsys, symnum);
+        test(tmp, fsys, 5);          //error 5: in then statement begin error
         stmt_sequence(tx, fsys);
         nxtlev[thensym] =false;
         addset(nxtlev, declbegsys, facbegsys, symnum);
         nxtlev[elsesym] = true;
         nxtlev[endsym] = true;
-        test(nxtlev, fsys, 5);
+        test(nxtlev, fsys, 6);              //error 6: if end else error
         bool flag = false;
         int cx1 = cx;
         gen(jmp, 0, 0);
         while (sym == elsesym) {
             getsym();
             elsecx = cx;
+            test(statbegsys, fsys, 7);      //error 7: in else statement begin error
             stmt_sequence(tx, fsys);
             nxtlev[elsesym] = false;
             nxtlev[endsym] = true;
-            test(nxtlev, fsys, 6);
+            test(nxtlev, fsys, 6);          //error 6: if end else error
             if(sym == endsym) {
                 getsym();
                 flag = true;
@@ -382,6 +462,10 @@ void if_stmt(int *tx, bool* fsys){
         if(sym == endsym && !flag){
             getsym();
         }
+        memset(tmp, 0, symnum*sizeof(bool));
+        tmp[semicolon] = true;
+        if(!isEnd)
+            test(tmp, fsys, 13);                // error 13: sym follow end must be semicolon
     }
     code[cx0].a = elsecx==-1?cx:elsecx;
 }
@@ -442,6 +526,10 @@ void simple_exp(int *tx, bool *fsys){
             term(tx, fsys);
             gen(opr, 0, 3);
             break;
+        case mod:
+            getsym();
+            term(tx, fsys);
+            gen(opr, 0, 17);
         default:
             return;
     }
@@ -561,7 +649,7 @@ void factor(int *tx, bool *fsys){
                 getsym();
                 if(!isPost && sym != ident) {error(102);break;}
                 int prepos = position(id, *tx);
-                incr(prepos, postpos);
+                decr(prepos, postpos);
             }
             isPost = false;
         }
@@ -710,6 +798,10 @@ void interpret(){
                     fprintf(fresult, ">");
                     scanf("%d", &(s[t]));
                     fprintf(fresult, "%d\n", s[t]);
+                    break;
+                case 17:
+                    t = t - 1;
+                    s[t] = s[t] - (s[t] / s[t + 1]) * s[t + 1];
                     break;
             }
                 break;
