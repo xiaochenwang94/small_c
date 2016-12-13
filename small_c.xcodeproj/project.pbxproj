@@ -237,6 +237,7 @@
 				AE491A9C1DADDFCE005D0BB6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
